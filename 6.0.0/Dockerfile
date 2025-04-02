@@ -1,4 +1,4 @@
-FROM ubuntu:22.04 as builder
+FROM ubuntu:24.04 as builder
 
 ARG TARGETARCH
 ARG SOFTWARE_TYPE="Enterprise-Edition"
@@ -54,7 +54,7 @@ RUN set -eux; \
 
 
 
-FROM ubuntu:22.04
+FROM ubuntu:24.04
 
 ARG TARGETARCH
 
@@ -62,7 +62,10 @@ ENV LANG en_US.utf8
 ENV GAUSSLOG /home/omm/pg_log
 ENV PGDATA /var/lib/opengauss/data
 ENV PGDATABASE postgres
-
+RUN apt update && apt install -y libaio1t64 \
+    && cd /usr/lib/x86_64-linux-gnu/ \
+    && ln -s libaio.so.1t64.0.2 libaio.so.1 \
+    && ldconfig
 RUN set -eux; \
     apt-get update && apt-get install --yes --no-install-recommends \
     libc6 \
@@ -75,11 +78,20 @@ RUN set -eux; \
     libaio-dev \
     libkeyutils-dev \
     libreadline-dev \
+    libaio1t64 \
     libltdl-dev; \
     apt-get clean; \
     rm -rf /var/lib/apt/lists/* /tmp/*; \
-    groupadd -g 70 omm; \
-    useradd -u 70 -g omm -m -s /bin/bash omm; \
+    cd /usr/lib/x86_64-linux-gnu/ \
+    && ln -s libaio.so.1t64.0.2 libaio.so.1 \
+    && ldconfig; \
+#    cat /etc/login.defs | grep -E "UID_MIN|UID_MAX|GID_MIN|GID_MAX"
+#    UID_MIN                  1000
+#    UID_MAX                 60000 \
+#    GID_MIN                  1000
+#    GID_MAX                 60000
+    groupadd -g 1700 omm; \
+    useradd -u 1700 -g omm -m -s /bin/bash omm; \
     mkdir -p /var/lib/opengauss; \
     mkdir -p /var/run/opengauss; \
     mkdir /docker-entrypoint-initdb.d; \
@@ -91,9 +103,9 @@ RUN set -eux; \
     echo "export LD_LIBRARY_PATH=\$GAUSSHOME/lib:\$LD_LIBRARY_PATH" >> /home/omm/.profile; \
     locale-gen en_US.UTF-8 && \
     if [ "$TARGETARCH" = "arm64" ];then \
-        ln -s /lib/aarch64-linux-gnu/libreadline.so.8.0 /lib/aarch64-linux-gnu/libreadline.so.7; \
+        ln -s /lib/aarch64-linux-gnu/libreadline.so.8.2 /lib/aarch64-linux-gnu/libreadline.so.7; \
     elif [ "$TARGETARCH" = "amd64" ];then \
-        ln -s /lib/x86_64-linux-gnu/libreadline.so.8.0 /lib/x86_64-linux-gnu/libreadline.so.7; \
+        ln -s /lib/x86_64-linux-gnu/libreadline.so.8.2 /lib/x86_64-linux-gnu/libreadline.so.7; \
     fi
 
 
